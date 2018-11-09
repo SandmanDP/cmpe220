@@ -84,6 +84,7 @@ CMD_HANDLER_FUNC(learnIrHandler);
 /// Send a packet over the air
 CMD_HANDLER_FUNC(wirelessHandler);
 
-
+/// Stuff
+CMD_HANDLER_FUNC(taskHandler);
 
 #endif /* HANDLERS_HPP_ */

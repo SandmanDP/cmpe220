@@ -83,8 +83,8 @@ CMD_HANDLER_FUNC(taskListHandler)
                 const uint32_t stackInBytes = (4 * e->usStackHighWaterMark);
 
                 output.printf("%10s %s %2u %5u %4u %10u us\n",
-                              e->pcTaskName, taskStatusTbl[e->eCurrentState], e->uxBasePriority,
-                              stackInBytes, cpuPercent, timeUs);
+                        e->pcTaskName, taskStatusTbl[e->eCurrentState], e->uxBasePriority,
+                        stackInBytes, cpuPercent, timeUs);
             }
         }
     }
@@ -95,7 +95,7 @@ CMD_HANDLER_FUNC(taskListHandler)
     const uint32_t overheadUs = (totalRunTime - tasksRunTime);
     const uint32_t overheadPercent = overheadUs / (totalRunTime / 100);
     output.printf("%10s --- -- ----- %4u %10u uS\n",
-                  "(overhead)", overheadPercent, overheadUs);
+            "(overhead)", overheadPercent, overheadUs);
 
     if (uxTaskGetNumberOfTasks() > maxTasks) {
         output.printf("** WARNING: Only reported first %u tasks\n", maxTasks);
@@ -153,22 +153,22 @@ CMD_HANDLER_FUNC(healthHandler)
         const int max_writes = 100 * 1000;
         int life = 100 - (100 * highestWrCnt / max_writes);
         output.printf("Flash: %u/%u Life: %i%% (page %u written %u times)\n",
-                        available, total, life, highestPageWrCnt, highestWrCnt);
+                available, total, life, highestPageWrCnt, highestWrCnt);
     }
     else {
         output.printf("Flash: %u/%u\n", available, total);
     }
 
     output.printf( "Temp : %u.%u\n"
-                   "Light: %u\n"
-                   "Time : %s"
-                   "Boot Time: %02u/%02u/%4u,%02u:%02u:%02u\n"
-                   "Uart0 Watermarks: %u/%u (rx/tx)\n",
-                    floatSig1, floatDec1,
-                    LS.getRawValue(),
-                    rtc_get_date_time_str(),
-                    bt.month, bt.day, bt.year, bt.hour, bt.min, bt.sec,
-                    u0.getRxQueueWatermark(), u0.getTxQueueWatermark()
+            "Light: %u\n"
+            "Time : %s"
+            "Boot Time: %02u/%02u/%4u,%02u:%02u:%02u\n"
+            "Uart0 Watermarks: %u/%u (rx/tx)\n",
+            floatSig1, floatDec1,
+            LS.getRawValue(),
+            rtc_get_date_time_str(),
+            bt.month, bt.day, bt.year, bt.hour, bt.min, bt.sec,
+            u0.getRxQueueWatermark(), u0.getTxQueueWatermark()
     );
 
     // TODO: Print U2/U3 and CAN statistics if it is initialized
@@ -215,10 +215,10 @@ CMD_HANDLER_FUNC(logHandler)
         output.printf("Queue watermark: %u\n", logger_get_num_buffers_watermark());
         output.printf("Highest file write time: %ums\n", logger_get_highest_file_write_time_ms());
         output.printf("Call counts    : %u dgb %u info %u warn %u err\n",
-                      logger_get_logged_call_count(log_debug),
-                      logger_get_logged_call_count(log_info),
-                      logger_get_logged_call_count(log_warn),
-                      logger_get_logged_call_count(log_error));
+                logger_get_logged_call_count(log_debug),
+                logger_get_logged_call_count(log_info),
+                logger_get_logged_call_count(log_warn),
+                logger_get_logged_call_count(log_error));
     }
     else if (cmdParams.beginsWith("raw")) {
         cmdParams.eraseFirstWords(1);
@@ -227,13 +227,13 @@ CMD_HANDLER_FUNC(logHandler)
     else if ( (enablePrintf = cmdParams.beginsWith("enable ")) || cmdParams.beginsWith("disable ")) {
         // command is: 'enable print info/warning/error'
         logger_msg_t type = cmdParams.containsIgnoreCase("warn")  ? log_warn  :
-                            cmdParams.containsIgnoreCase("error") ? log_error :
-                            cmdParams.containsIgnoreCase("info")  ? log_info  : log_debug;
+                cmdParams.containsIgnoreCase("error") ? log_error :
+                        cmdParams.containsIgnoreCase("info")  ? log_info  : log_debug;
 
         logger_set_printf(type, enablePrintf);
         output.printf("%s logger printf for %s\n",
-                      enablePrintf ? "Enabled" : "Disabled",
-                      type == log_debug ? "debug" : type == log_info ? "info" : type == log_warn ? "warn" : "error");
+                enablePrintf ? "Enabled" : "Disabled",
+                        type == log_debug ? "debug" : type == log_info ? "info" : type == log_warn ? "warn" : "error");
     }
     else {
         // This loop was the test code used while testing the logger such that the user
@@ -259,15 +259,15 @@ CMD_HANDLER_FUNC(cpHandler)
     unsigned int writeTimeMs = 0;
     unsigned int bytesTransferred = 0;
     FRESULT copyStatus = Storage::copy(srcFile, dstFile,
-                                       &readTimeMs, &writeTimeMs, &bytesTransferred);
+            &readTimeMs, &writeTimeMs, &bytesTransferred);
 
     if(FR_OK != copyStatus) {
         output.printf("Error %u copying |%s| -> |%s|\n", copyStatus, srcFile, dstFile);
     }
     else {
         output.printf("Finished!  Read: %u Kb/sec, Write: %u Kb/sec\n",
-                      bytesTransferred/(0 == readTimeMs  ? 1 : readTimeMs),
-                      bytesTransferred/(0 == writeTimeMs ? 1 : writeTimeMs));
+                bytesTransferred/(0 == readTimeMs  ? 1 : readTimeMs),
+                bytesTransferred/(0 == writeTimeMs ? 1 : writeTimeMs));
     }
     return true;
 }
@@ -319,7 +319,7 @@ CMD_HANDLER_FUNC(catHandler)
         if(!printToScreen) {
             const unsigned int timeTaken = sys_get_uptime_ms() - startTime;
             output.printf("\nRead %d bytes @ %d Kb/sec", totalBytesRead,
-                          totalBytesRead/(0 == timeTaken  ? 1 : timeTaken));
+                    totalBytesRead/(0 == timeTaken  ? 1 : timeTaken));
         }
         output.putline("");
     }
@@ -334,9 +334,9 @@ CMD_HANDLER_FUNC(lsHandler)
     FRESULT returnCode = FR_OK;
 
     unsigned int fileBytesTotal = 0, numFiles = 0, numDirs = 0;
-    #if _USE_LFN
-        char Lfname[_MAX_LFN];
-    #endif
+#if _USE_LFN
+    char Lfname[_MAX_LFN];
+#endif
 
     const char *dirPath = cmdParams == "" ? "0:" : cmdParams();
     if (FR_OK != (returnCode = f_opendir(&Dir, dirPath))) {
@@ -347,10 +347,10 @@ CMD_HANDLER_FUNC(lsHandler)
 #if 0
     // Offset the listing
     while(lsOffset-- > 0) {
-        #if _USE_LFN
-            Finfo.lfname = Lfname;
-            Finfo.lfsize = sizeof(Lfname);
-        #endif
+#if _USE_LFN
+        Finfo.lfname = Lfname;
+        Finfo.lfsize = sizeof(Lfname);
+#endif
         if (FR_OK != f_readdir(&Dir, &Finfo)) {
             break;
         }
@@ -360,10 +360,10 @@ CMD_HANDLER_FUNC(lsHandler)
     output.printf("Directory listing of: %s\n\n", dirPath);
     for (;;)
     {
-        #if _USE_LFN
-            Finfo.lfname = Lfname;
-            Finfo.lfsize = sizeof(Lfname);
-        #endif
+#if _USE_LFN
+        Finfo.lfname = Lfname;
+        Finfo.lfsize = sizeof(Lfname);
+#endif
 
         returnCode = f_readdir(&Dir, &Finfo);
         if ( (FR_OK != returnCode) || !Finfo.fname[0]) {
@@ -379,19 +379,19 @@ CMD_HANDLER_FUNC(lsHandler)
         }
         output.printf("%c%c%c%c%c %u/%02u/%02u %02u:%02u %10lu %13s",
                 (Finfo.fattrib & AM_DIR) ? 'D' : '-',
-                (Finfo.fattrib & AM_RDO) ? 'R' : '-',
-                (Finfo.fattrib & AM_HID) ? 'H' : '-',
-                (Finfo.fattrib & AM_SYS) ? 'S' : '-',
-                (Finfo.fattrib & AM_ARC) ? 'A' : '-',
-                (Finfo.fdate >> 9) + 1980, (Finfo.fdate >> 5) & 15, Finfo.fdate & 31,
-                (Finfo.ftime >> 11), (Finfo.ftime >> 5) & 63,
-                Finfo.fsize, &(Finfo.fname[0]));
+                        (Finfo.fattrib & AM_RDO) ? 'R' : '-',
+                                (Finfo.fattrib & AM_HID) ? 'H' : '-',
+                                        (Finfo.fattrib & AM_SYS) ? 'S' : '-',
+                                                (Finfo.fattrib & AM_ARC) ? 'A' : '-',
+                                                        (Finfo.fdate >> 9) + 1980, (Finfo.fdate >> 5) & 15, Finfo.fdate & 31,
+                                                        (Finfo.ftime >> 11), (Finfo.ftime >> 5) & 63,
+                                                        Finfo.fsize, &(Finfo.fname[0]));
 
         // LFN names tend to increase memory requirements for output str, enable with caution
-        #if (_USE_LFN)
+#if (_USE_LFN)
         output.put(" - ");
         output.put(Lfname);
-        #endif
+#endif
         output.putline("");
     }
     output.printf("\n%4u File(s), %10d bytes total\n%4d Dir(s)", numFiles, fileBytesTotal, numDirs);
@@ -406,14 +406,14 @@ CMD_HANDLER_FUNC(lsHandler)
 CMD_HANDLER_FUNC(mkdirHandler)
 {
     output.printf("Create directory '%s' : %s\n",
-                   cmdParams(), (FR_OK == f_mkdir(cmdParams())) ? "OK" : "ERROR");
+            cmdParams(), (FR_OK == f_mkdir(cmdParams())) ? "OK" : "ERROR");
     return true;
 }
 
 CMD_HANDLER_FUNC(rmHandler)
 {
     output.printf("Delete '%s' : %s\n",
-                  cmdParams(), (FR_OK == f_unlink(cmdParams())) ? "OK" : "ERROR");
+            cmdParams(), (FR_OK == f_unlink(cmdParams())) ? "OK" : "ERROR");
     return true;
 }
 
@@ -481,8 +481,8 @@ CMD_HANDLER_FUNC(mvHandler)
     }
     else {
         output.printf("Move '%s' -> '%s' : %s\n",
-                      srcFile, dstFile,
-                      (FR_OK == f_rename(srcFile, dstFile))  ? "OK" : "ERROR");
+                srcFile, dstFile,
+                (FR_OK == f_rename(srcFile, dstFile))  ? "OK" : "ERROR");
     }
     return true;
 }
@@ -521,9 +521,9 @@ CMD_HANDLER_FUNC(dcpHandler)
     DIR Dir;
     FILINFO Finfo;
     FRESULT returnCode = FR_OK;
-    #if _USE_LFN
-        char Lfname[_MAX_LFN];
-    #endif
+#if _USE_LFN
+    char Lfname[_MAX_LFN];
+#endif
 
     char *srcDir = NULL;
     char *dstDir = NULL;
@@ -547,10 +547,10 @@ CMD_HANDLER_FUNC(dcpHandler)
     STR_ON_STACK(dst, 256);
     for (;;)
     {
-        #if _USE_LFN
-            Finfo.lfname = Lfname;
-            Finfo.lfsize = sizeof(Lfname);
-        #endif
+#if _USE_LFN
+        Finfo.lfname = Lfname;
+        Finfo.lfsize = sizeof(Lfname);
+#endif
 
         /* If no more files */
         if ( (FR_OK != f_readdir(&Dir, &Finfo)) || !Finfo.fname[0]) {
@@ -564,8 +564,8 @@ CMD_HANDLER_FUNC(dcpHandler)
             dst.printf("%s/%s", dstDir, Finfo.fname);
 
             output.printf("Copy %s -> %s : %d Bytes : %s\n",
-                           src(), dst(), Finfo.fsize,
-                           (FR_OK == Storage::copy(src(), dst())) ? "OK" : "ERROR");
+                    src(), dst(), Finfo.fsize,
+                    (FR_OK == Storage::copy(src(), dst())) ? "OK" : "ERROR");
         }
     }
     return true;
@@ -682,6 +682,32 @@ CMD_HANDLER_FUNC(learnIrHandler)
     return true;
 }
 
+CMD_HANDLER_FUNC(taskHandler)
+{
+    char *status = NULL;
+    char *taskName = NULL;
+    if(2 != cmdParams.tokenize(" ", 2, &status, &taskName)) {
+        output.putline("ERROR: Provide resume/suspend and task name separated by a space");
+        return true;
+    }
+    // Our parameter was the orientation tasks' pointer, but you may want to check for NULL pointer first.
+    scheduler_task *compute = scheduler_task::getTaskPtrByName(taskName);
+
+    // You can use FreeRTOS API or the wrapper resume() or suspend() methods
+    if (strcmp(status, "resume") == 0) {
+        vTaskResume(compute->getTaskHandle());  // Can also use: compute->resume();
+    }
+    else if(strcmp(status, "suspend") == 0){
+        vTaskSuspend(compute->getTaskHandle()); // Can also use: compute->suspend();
+    }
+    else{
+        output.putline("ERROR: Provide resume/suspend");
+        return true;
+    }
+
+    return true;
+}
+
 #if TERMINAL_USE_CAN_BUS_HANDLER
 #include "can.h"
 #include "printf_lib.h"
@@ -708,112 +734,112 @@ CMD_HANDLER_FUNC(canBusHandler)
     }
     else
 #endif
-    if (cmdParams == "init")
-    {
-        bool ok = CAN_init(can, baudrate, 3, 3, can_BusOffCallback, NULL);
-        output.printf("CAN init: %s\n", ok ? "OK" : "ERROR");
-
-        CAN_reset_bus(can);
-        CAN_bypass_filter_ack_all_msgs();
-    }
-    else if (cmdParams.beginsWithIgnoreCase("filter"))
-    {
-        uint32_t id = 0;
-        if (cmdParams.scanf("%*s %x", &id))
+        if (cmdParams == "init")
         {
-            can_std_id_t *nosid = NULL;
-            can_std_grp_id_t *nosgp = NULL;
-            can_ext_grp_id_t *noeid = NULL;
-            can_ext_id_t eid = CAN_gen_eid(can, id);
+            bool ok = CAN_init(can, baudrate, 3, 3, can_BusOffCallback, NULL);
+            output.printf("CAN init: %s\n", ok ? "OK" : "ERROR");
 
-            CAN_setup_filter(nosid, 0,
-                             nosgp, 0,
-                             &eid, 1,
-                             noeid, 0);
+            CAN_reset_bus(can);
+            CAN_bypass_filter_ack_all_msgs();
         }
-        else {
-            output.printf("Please specify the ID to filter: 'filter 0x100'\n");
+        else if (cmdParams.beginsWithIgnoreCase("filter"))
+        {
+            uint32_t id = 0;
+            if (cmdParams.scanf("%*s %x", &id))
+            {
+                can_std_id_t *nosid = NULL;
+                can_std_grp_id_t *nosgp = NULL;
+                can_ext_grp_id_t *noeid = NULL;
+                can_ext_id_t eid = CAN_gen_eid(can, id);
+
+                CAN_setup_filter(nosid, 0,
+                        nosgp, 0,
+                        &eid, 1,
+                        noeid, 0);
+            }
+            else {
+                output.printf("Please specify the ID to filter: 'filter 0x100'\n");
+            }
         }
-    }
-    else if (cmdParams.beginsWithIgnoreCase("tx"))
-    {
-        int length = 0;
-        int message_id = 0;
-        can_msg_t msg = { 0 };
+        else if (cmdParams.beginsWithIgnoreCase("tx"))
+        {
+            int length = 0;
+            int message_id = 0;
+            can_msg_t msg = { 0 };
 
-        /* Get length and message id */
-        if (2 != cmdParams.scanf("%*s %x %i", &message_id, &length)) {
-            output.printf("Need <message id> <length> <bytes>\n");
-            return true;
-        }
+            /* Get length and message id */
+            if (2 != cmdParams.scanf("%*s %x %i", &message_id, &length)) {
+                output.printf("Need <message id> <length> <bytes>\n");
+                return true;
+            }
 
-        /* Remove first three words, then scan for data bytes of can message */
-        cmdParams.eraseFirstWords(3);
-        cmdParams.scanf("%x %x %x %x %x %x %x %x",
-                        &msg.data.bytes[0], &msg.data.bytes[1], &msg.data.bytes[2], &msg.data.bytes[3],
-                        &msg.data.bytes[4], &msg.data.bytes[5], &msg.data.bytes[6], &msg.data.bytes[7]);
+            /* Remove first three words, then scan for data bytes of can message */
+            cmdParams.eraseFirstWords(3);
+            cmdParams.scanf("%x %x %x %x %x %x %x %x",
+                    &msg.data.bytes[0], &msg.data.bytes[1], &msg.data.bytes[2], &msg.data.bytes[3],
+                    &msg.data.bytes[4], &msg.data.bytes[5], &msg.data.bytes[6], &msg.data.bytes[7]);
 
-        msg.frame_fields.data_len = length;
-        msg.frame_fields.is_29bit = 1;
-        msg.msg_id = message_id;
+            msg.frame_fields.data_len = length;
+            msg.frame_fields.is_29bit = 1;
+            msg.msg_id = message_id;
 
-        output.printf("Send CAN message with length: %u, ID: %#4X\n    ", length, message_id);
-        for (int i = 0; i < msg.frame_fields.data_len; i++) {
-            printf("%#2X, ", msg.data.bytes[i]);
-        }
-        output.printf("\n");
-        output.flush();
-
-        if (CAN_tx(can, &msg, 100)) {
-            output.printf("  CAN message was possibly sent!\n");
-        }
-        else {
-            output.printf("  ERROR sending CAN message\n");
-        }
-    }
-    else if (cmdParams.beginsWithIgnoreCase("rx"))
-    {
-        int timeout = 0;
-        cmdParams.scanf("%*s %i", &timeout);
-
-        bool rx = false;
-        can_msg_t msg;
-        while (CAN_rx(can, &msg, timeout)) {
-            rx = true;
-            output.printf("Received a can frame with ID: %#4X\n", msg.msg_id);
+            output.printf("Send CAN message with length: %u, ID: %#4X\n    ", length, message_id);
             for (int i = 0; i < msg.frame_fields.data_len; i++) {
-                output.printf("%#2X, ", msg.data.bytes[i]);
+                printf("%#2X, ", msg.data.bytes[i]);
             }
             output.printf("\n");
-        }
+            output.flush();
 
-        if (!rx) {
-            output.printf("Failed to receive data with %i timeout\n", timeout);
+            if (CAN_tx(can, &msg, 100)) {
+                output.printf("  CAN message was possibly sent!\n");
+            }
+            else {
+                output.printf("  ERROR sending CAN message\n");
+            }
         }
-    }
-    else if (cmdParams == "registers")
-    {
-        /* Read CAN registers for debugging */
-        output.printf("CANBus Status: %s\n", CAN_is_bus_off(can) ? "OFF" : "OK");
-        output.printf("MOD : %#8X\n", LPC_CAN1->MOD);
-        output.printf("IER : %#8X\n", LPC_CAN1->IER);
-        output.printf("ICR : %#8X\n", LPC_CAN1->ICR);
-        output.printf("GSR : %#8X\n", LPC_CAN1->GSR);
-        output.printf("AMFR: %#8X\n", LPC_CANAF->AFMR);
+        else if (cmdParams.beginsWithIgnoreCase("rx"))
+        {
+            int timeout = 0;
+            cmdParams.scanf("%*s %i", &timeout);
 
-        output.printf("\n");
-        output.printf(" SFF SA: %#8X\n", LPC_CANAF->SFF_sa);
-        output.printf("SFFG SA: %#8X\n", LPC_CANAF->SFF_GRP_sa);
-        output.printf("EFFG SA: %#8X\n", LPC_CANAF->EFF_GRP_sa);
-        output.printf("END PTR: %#8X\n", LPC_CANAF->ENDofTable);
+            bool rx = false;
+            can_msg_t msg;
+            while (CAN_rx(can, &msg, timeout)) {
+                rx = true;
+                output.printf("Received a can frame with ID: %#4X\n", msg.msg_id);
+                for (int i = 0; i < msg.frame_fields.data_len; i++) {
+                    output.printf("%#2X, ", msg.data.bytes[i]);
+                }
+                output.printf("\n");
+            }
 
-        for (int i = 0; i < 4; i++) {
-            output.printf("%2i: s8X\n", i, (uint32_t) LPC_CANAF_RAM->mask[i]);
+            if (!rx) {
+                output.printf("Failed to receive data with %i timeout\n", timeout);
+            }
         }
-    }
-    else {
-        return false;
-    }
+        else if (cmdParams == "registers")
+        {
+            /* Read CAN registers for debugging */
+            output.printf("CANBus Status: %s\n", CAN_is_bus_off(can) ? "OFF" : "OK");
+            output.printf("MOD : %#8X\n", LPC_CAN1->MOD);
+            output.printf("IER : %#8X\n", LPC_CAN1->IER);
+            output.printf("ICR : %#8X\n", LPC_CAN1->ICR);
+            output.printf("GSR : %#8X\n", LPC_CAN1->GSR);
+            output.printf("AMFR: %#8X\n", LPC_CANAF->AFMR);
+
+            output.printf("\n");
+            output.printf(" SFF SA: %#8X\n", LPC_CANAF->SFF_sa);
+            output.printf("SFFG SA: %#8X\n", LPC_CANAF->SFF_GRP_sa);
+            output.printf("EFFG SA: %#8X\n", LPC_CANAF->EFF_GRP_sa);
+            output.printf("END PTR: %#8X\n", LPC_CANAF->ENDofTable);
+
+            for (int i = 0; i < 4; i++) {
+                output.printf("%2i: s8X\n", i, (uint32_t) LPC_CANAF_RAM->mask[i]);
+            }
+        }
+        else {
+            return false;
+        }
 
     return true;
 }
