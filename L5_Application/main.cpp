@@ -24,6 +24,9 @@
 #include "lpc_pwm.hpp"
 #include <stdio.h>
 #include <math.h>
+#include "temperature_sensor.hpp"
+#include "io.hpp"
+#include "utilities.h"
 
 typedef enum {
     sys_restart = 1,
@@ -588,6 +591,20 @@ class gps_task : public scheduler_task {
             return true;
         }
 };
+*/
+
+void temp_sensor_task(void *params)
+{
+    volatile uint8_t temp = 0;
+
+    while(1)
+    {
+        temp = TS.getFarenheit();
+        printf("%u\n", temp);
+
+        delay_ms(1000);
+    }
+}
 
 int main(void)
 {
@@ -679,6 +696,14 @@ int main(void)
     //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
     scheduler_add_task(new compass_task(PRIORITY_MEDIUM));
     scheduler_add_task(new gps_task(PRIORITY_HIGH));
+    scheduler_add_task(new temp_task(PRIORITY_HIGH));
+
+    scheduler_start(); ///< This shouldn't return*/
+
+    const uint32_t STACK_SIZE = 1024;
+
+    xTaskCreate(temp_sensor_task, "Temperature Sensor", STACK_SIZE, NULL, PRIORITY_HIGH, NULL);
+    vTaskStartScheduler();
 
     scheduler_start(); ///< This shouldn't return
     return -1;
