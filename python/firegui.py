@@ -127,16 +127,18 @@ class SerialTask(threading.Thread):
         self.running = True
 
     def run(self):
-        with serial.Serial() as hub:
+        with serial.Serial(port='/dev/cu.usbserial-A503JOHS', baudrate=38400, timeout=1) as hub:
+            # hub.open()
             jstr = '{"temperature": 62, "direction": 270, "gps_lat": 37.336, "gps_long": -121.88}'
             while(self.running):
+                print(hub.readline())
                 jdict = json.loads(jstr)
                 self.tkwin.firemen[0].position = (jdict['gps_lat'], jdict['gps_long'])
                 self.tkwin.firemen[0].temperature = jdict['temperature']
                 self.tkwin.firemen[0].direction = jdict['direction']
                 self.tkwin.firemen[0].active = True
                 self.tkwin.update_firefighters()
-                time.sleep(1)
+                # time.sleep(1)
 
 
 FireApp()
