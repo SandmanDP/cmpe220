@@ -24,9 +24,8 @@
 #include "lpc_pwm.hpp"
 #include <stdio.h>
 #include <math.h>
-#include "temperature_sensor.hpp"
-#include "io.hpp"
-#include "utilities.h"
+#include <time.h>
+#include "semphr.h"
 
 typedef enum {
     sys_restart = 1,
@@ -124,6 +123,8 @@ int32_t offset_lat = 0;
 int32_t offset_lon = 0;
 
 int32_t distance = 0, angle = 0;
+
+SemaphoreHandle_t sema;
 
 //const gpspackage_t gps_config[256] =
 //{
@@ -250,10 +251,6 @@ class compass_task : public scheduler_task {
         }
 
         bool run(void *p){
-        	PWM pwm(PWM::pwm1,50);
-        	//pwm.set(8.41);//center
-        	//pwm.set(6.5);//right
-        	//pwm.set(10);//left
             int compass = 0;
 //            LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
 //            while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
@@ -274,7 +271,7 @@ class compass_task : public scheduler_task {
 //            LPC_UART3->THR = 0xF8;                  //send byte "i" from the message string
 //            while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
 //            while(!(LPC_UART3->LSR & (1 << 0)));
-            printf("Initial calibration.");
+//            printf("Initial calibration.");
             LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
             while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
             while(!(LPC_UART3->LSR & (1 << 0)));
@@ -283,8 +280,7 @@ class compass_task : public scheduler_task {
             compass += LPC_UART3->RBR;
             int default_position = compass;
             while(1){
-                //printf("Yes pls\n");
-                vTaskDelay(1000);
+                vTaskDelay(100);
                 compass = 0;
                 LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
                 while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
@@ -292,10 +288,13 @@ class compass_task : public scheduler_task {
                 compass += LPC_UART3->RBR*256;
                 while(!(LPC_UART3->LSR & (1 << 0)));
                 compass += LPC_UART3->RBR;
-                float temp = ((float)compass+1800-default_position)/240.0;
-                temp = temp >= 5.0 && temp <= 10.0 ? temp : (temp >= 5.0 ? 10 : 5);
+//                float temp = ((float)compass+1800-default_position)/240.0;
+//                temp = temp >= 5.0 && temp <= 10.0 ? temp : (temp >= 5.0 ? 10 : 5);
                 //pwm.set(temp);
-                printf("Compass: %i; Adjusted: %f\n", compass, temp);
+                xSemaphoreTake(sema, 10000);
+                printf("{\"direction\": %i}\n", compass/10);
+                xSemaphoreGive(sema);
+//                printf("Compass: %i; Adjusted: %f\n", compass, temp);
                 //pwm.set((compass%900)/180.0f+5);
             }
             return true;
@@ -335,62 +334,22 @@ class gps_task : public scheduler_task {
         }
 
         bool run(void *p){
-            PWM pwm(PWM::pwm1,50);
-            //pwm.set(8.41);//center
-            //pwm.set(6.5);//right
-            //pwm.set(10);//left
-            PWM pwm2(PWM::pwm2,50);
-            vTaskDelay(500);
-            pwm2.set(5);
-            vTaskDelay(500);
-            pwm2.set(10);
-            vTaskDelay(500);
-            pwm2.set(5);
-            vTaskDelay(500);
-            //Reset
-//            for (int i = 0; i < 15; i++) {
-//                LPC_UART2->THR = 0x01;                  //send byte "i" from the message string
-//                while(!(LPC_UART2->LSR & (1 << 5)));    //wait for empty transmitter holding register
-//            }
-
-//            LPC_UART2->THR = 0x29;                  //send byte "i" from the message string
-//            while(!(LPC_UART2->LSR & (1 << 5)));    //wait for empty transmitter holding register
-
-//            LPC_UART2->THR = 0x29;                  //send byte "i" from the message string
-//            while(!(LPC_UART2->LSR & (1 << 5)));    //wait for empty transmitter holding register
-//            PWM servo(PWM::pwm1, 50);
-//            while (1) {
-//                servo.set(7.5);
-//                vTaskDelay(1000);
-//                servo.set(10);
-//                vTaskDelay(1000);
-//                servo.set(5);
-//                vTaskDelay(1000);
-//                servo.set(0);
-//                vTaskDelay(1000);
-//                servo.set(0.5);
-//                vTaskDelay(1000);
-//                servo.set(0.1);
-//                vTaskDelay(1000);
-//                servo.set(0.01);
-//                vTaskDelay(1000);
-//                servo.set(0);
-//                vTaskDelay(1000);
+//            while(1){
+//                printf("{\"temperature\": 70, \"direction\": 180, \"gps_lat\": 37.336, \"gps_long\": -121.88}\n");
+//                vTaskDelay(500);
 //            }
             while (1) {
-                printf("Starting");
-                printf("%s", gps_send_message(sys_config_nmea, 0) ? "True" : "False");
-                printf("Done!");
+                gps_send_message(sys_config_nmea, 0);
 
                 //printf("\n%s: %i %i %i\n", result ? "True" : "False", data[0], data[1], data[2]);
 
                 gps_send_message(gps_config_datum, 0);
 
-                printf("\n%s\n", gps_send_message(sys_config_nmea, 1) ? "True" : "False");
+                gps_send_message(sys_config_nmea, 1);
 
                 uint8_t data3[256] = {0};
-                uint32_t ns = 0, ew = 0, up = 0, ave_ns = 0, ave_ew = 0, act_ns = 0, act_ew = 0;
-                for(int l = 0; l < 7; ){
+                uint32_t latd = 0, latm = 0, longd = 0, longm = 0;
+                while(1){
                     while(data3[0] != '$') {
                         while(!(LPC_UART2->LSR & (1 << 0)));
                         data3[0] = LPC_UART2->RBR;
@@ -401,110 +360,81 @@ class gps_task : public scheduler_task {
                         data3[i] = LPC_UART2->RBR;
                         if(data3[i-1] == 13 && data3[i] == 10) break;
                     }
-                    ns = data3[7]-'0';
-                    ns = ns*10 + data3[8]-'0';
-                    ns = ns*10 + data3[9]-'0';
-                    ns = ns*10 + data3[10]-'0';
-                    ns = ns*10 + data3[12]-'0';
-                    ns = ns*10 + data3[13]-'0';
-                    ns = ns*10 + data3[14]-'0';
-                    ns = ns*10 + data3[15]-'0';
-                    ew = data3[19]-'0';
-                    ew = ew*10 + data3[20]-'0';
-                    ew = ew*10 + data3[21]-'0';
-                    ew = ew*10 + data3[22]-'0';
-                    ew = ew*10 + data3[23]-'0';
-                    ew = ew*10 + data3[25]-'0';
-                    ew = ew*10 + data3[26]-'0';
-                    ew = ew*10 + data3[27]-'0';
-                    ew = ew*10 + data3[28]-'0';
-                    if(data3[43] != 'A') {
-                        up = 0;
+                    latd = data3[7]-'0';
+                    latd = latd*10 + data3[8]-'0';
+                    latm = data3[9]-'0';
+                    latm = latm*10 + data3[10]-'0';
+                    latm = latm*10 + data3[12]-'0';
+                    latm = latm*10 + data3[13]-'0';
+                    latm = latm*10 + data3[14]-'0';
+                    latm = latm*10 + data3[15]-'0';
+                    longd = data3[19]-'0';
+                    longd = longd*10 + data3[20]-'0';
+                    longd = longd*10 + data3[21]-'0';
+                    longm = data3[22]-'0';
+                    longm = longm*10 + data3[23]-'0';
+                    longm = longm*10 + data3[25]-'0';
+                    longm = longm*10 + data3[26]-'0';
+                    longm = longm*10 + data3[27]-'0';
+                    longm = longm*10 + data3[28]-'0';
+                    if(data3[43] == 'A') {
+//                        printf("%s", data3);
+                        xSemaphoreTake(sema, 10000);
+                        printf("{\"gps_lat\": %f, \"gps_long\": -%f}\n", latd+(latm*5.0/3000000), longd+(longm*5.0/3000000));
+                        xSemaphoreGive(sema);
                     }
-                    else {
-                        up++;
-                    }
-                    if(l == 0){
-                        pwm.set(7.5);
-                        if(up==0){
-                            ave_ns = 0;
-                            ave_ew = 0;
-                        }else if(up>=60){
-                            offset_lat = (ave_ns/30)-list[0].lat;
-                            offset_lon = (ave_ew/30)-list[0].lon;
-                            printf("Done calib..: off_lan = %i, off_lon = %i, ave_ns = %i, ave_ew = %i", (int)offset_lat, (int)offset_lon, (int)ave_ns, (int)ave_ew);
-                            pwm2.set(5.5);
-                            l++;
-                        }else if(up>=30){
-                            ave_ns += ns;
-                            ave_ew += ew;
-                        }
-                    }
-                    else {
-                        act_ns = ns-offset_lat;
-                        act_ew = ew-offset_lon;
-                        distance = (int)sqrt(pow((act_ns-list[l].lat),2)+pow((act_ew-list[l].lon),2));
-                        if(distance <= 100){
-                            l++;
-                            if(l < 7){
-                                distance = (int)sqrt(pow((act_ns-list[l].lat),2)+pow((act_ew-list[l].lon),2));
-                            }
-                            else{
-                                break;
-                            }
-                        }
-                        printf("\n%i: act_ns:%i act_ew:%i, distance:%i", l, (int)act_ns, (int)act_ew, (int)distance);
-                        printf("Done calib..: off_lan = %i, off_lon = %i, ave_ns = %i, ave_ew = %i", (int)offset_lat, (int)offset_lon, (int)ave_ns, (int)ave_ew);
-                        angle = atan2(list[l].lat-act_ns,act_ew-list[l].lon)*1800/M_PI;
-                        angle = compass_fixifier((3600 - ((angle+6300)%3600))%3600);
-                        int compass = 0;
-                        LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
-                        while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
-                        while(!(LPC_UART3->LSR & (1 << 0)));
-                        compass += LPC_UART3->RBR*256;
-                        while(!(LPC_UART3->LSR & (1 << 0)));
-                        compass += LPC_UART3->RBR;
-                        //int raw = compass;
-                        //compass = (3600 - ((compass+2700)%3600))%3600;
-                        int angle_diff = abs(angle-compass)%3600;
-                        angle_diff = angle_diff > 1800 ? 3600 - angle_diff : angle_diff;
-                        angle_diff *= ((angle-compass) >= 0 && (angle-compass) <= 1800) || ((angle-compass) <=-1800) ? -1 : 1;
-                        if(angle_diff >= 100){
-                            if(angle_diff >= 500){
-                                pwm.set(10);//left
-                            }
-                            else {
-                                pwm.set(8.5);
-                            }
-                        }
-                        else if (angle_diff <= -100){
-                            if(angle_diff <= -500){
-                                pwm.set(5);//right
-                            }
-                            else {
-                                pwm.set(6.5);
-                            }
-                        }
-                        else {
-                            pwm.set(7.5);
-                        }
-                        printf("\nCompass: %i, Wanted: %i, Diff: %i", (int)compass, (int)angle, angle_diff);
-                    }
+                    vTaskDelay(900);
+//                    if(l == 0){
+//                        if(up==0){
+//                            ave_ns = 0;
+//                            ave_ew = 0;
+//                        }else if(up>=60){
+//                            offset_lat = (ave_ns/30)-list[0].lat;
+//                            offset_lon = (ave_ew/30)-list[0].lon;
+//                            printf("Done calib..: off_lan = %i, off_lon = %i, ave_ns = %i, ave_ew = %i", (int)offset_lat, (int)offset_lon, (int)ave_ns, (int)ave_ew);
+//                            l++;
+//                        }else if(up>=30){
+//                            ave_ns += ns;
+//                            ave_ew += ew;
+//                        }
+//                    }
+//                    else {
+//                        act_ns = ns-offset_lat;
+//                        act_ew = ew-offset_lon;
+//                        distance = (int)sqrt(pow((act_ns-list[l].lat),2)+pow((act_ew-list[l].lon),2));
+//                        if(distance <= 100){
+//                            l++;
+//                            if(l < 7){
+//                                distance = (int)sqrt(pow((act_ns-list[l].lat),2)+pow((act_ew-list[l].lon),2));
+//                            }
+//                            else{
+//                                break;
+//                            }
+//                        }
+//                        printf("\n%i: act_ns:%i act_ew:%i, distance:%i", l, (int)act_ns, (int)act_ew, (int)distance);
+//                        printf("Done calib..: off_lan = %i, off_lon = %i, ave_ns = %i, ave_ew = %i", (int)offset_lat, (int)offset_lon, (int)ave_ns, (int)ave_ew);
+//                        angle = atan2(list[l].lat-act_ns,act_ew-list[l].lon)*1800/M_PI;
+//                        angle = compass_fixifier((3600 - ((angle+6300)%3600))%3600);
+//                        int compass = 0;
+//                        LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
+//                        while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
+//                        while(!(LPC_UART3->LSR & (1 << 0)));
+//                        compass += LPC_UART3->RBR*256;
+//                        while(!(LPC_UART3->LSR & (1 << 0)));
+//                        compass += LPC_UART3->RBR;
+//                        //int raw = compass;
+//                        //compass = (3600 - ((compass+2700)%3600))%3600;
+//                        int angle_diff = abs(angle-compass)%3600;
+//                        angle_diff = angle_diff > 1800 ? 3600 - angle_diff : angle_diff;
+//                        angle_diff *= ((angle-compass) >= 0 && (angle-compass) <= 1800) || ((angle-compass) <=-1800) ? -1 : 1;
+//                        printf("\nCompass: %i, Wanted: %i, Diff: %i", (int)compass, (int)angle, angle_diff);
+//                    }
 //                    printf("\n%i,N %i,W (%i)", (int)ns-70, (int)ew+550, (int)up);
 //                    for(int j = 0; j < i+1; j++){
 //                        printf("%c", data3[j]);
 //                    }
                     data3[0] = 0;
-                    if(l>0 && up!=0){
-                        pwm2.set(5.7);
-                    }
-                    else{
-                        pwm2.set(5);
-                    }
-//                    vTaskDelay(500);
                 }
-                pwm.set(7.5);
-                pwm2.set(5);
                 while(1);
 
 
@@ -591,20 +521,6 @@ class gps_task : public scheduler_task {
             return true;
         }
 };
-*/
-
-void temp_sensor_task(void *params)
-{
-    volatile uint8_t temp = 0;
-
-    while(1)
-    {
-        temp = TS.getFarenheit();
-        printf("%u\n", temp);
-
-        delay_ms(1000);
-    }
-}
 
 int main(void)
 {
@@ -694,16 +610,9 @@ int main(void)
 	LPC_PINCON -> PINSEL4 |= (5<<0);
 
     //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
-    scheduler_add_task(new compass_task(PRIORITY_MEDIUM));
+    scheduler_add_task(new compass_task(PRIORITY_HIGH));
     scheduler_add_task(new gps_task(PRIORITY_HIGH));
-    scheduler_add_task(new temp_task(PRIORITY_HIGH));
-
-    scheduler_start(); ///< This shouldn't return*/
-
-    const uint32_t STACK_SIZE = 1024;
-
-    xTaskCreate(temp_sensor_task, "Temperature Sensor", STACK_SIZE, NULL, PRIORITY_HIGH, NULL);
-    vTaskStartScheduler();
+    sema = xSemaphoreCreateBinary();
 
     scheduler_start(); ///< This shouldn't return
     return -1;

@@ -29,6 +29,8 @@ def get_xy_pos(map_dict, coord_pair):
 
 cold_temp = 60
 hot_temp = 210
+
+
 def temp_to_color(temp):
     red = 0
     green = 0
@@ -52,9 +54,9 @@ def temp_to_color(temp):
 class Fireman:
 
     def __init__(self):
-        self.position = (None, None)
+        self.position = None
         self.direction = None
-        self.temperature = None
+        self.temperature = 67
         self.air_quality = None
         self.hazardous_temp = 0
         self.hazardous_air = 0
@@ -100,19 +102,24 @@ class FireApp(tk.Tk):
         # self.imglabel.image = self.next_image
         self.canvas.itemconfigure(self.image, image=self.smallimage if self.is_big else self.bigimage)
         self.is_big = not self.is_big
-        self.update_firefighters()
+        self.clear_marker()
         # print("Ding!")
 
     def ender(self):
         self.json_listener.running = False
+        time.sleep(0.5)
         self.destroy()
+        self.json_listener.tkwin = None
+        self.json_listener.join()
 
-    def update_firefighters(self):
+    def clear_marker(self):
         for item in self.firemen_markers:
             self.canvas.delete(item)
-        self.firemen_markers = []
+
+    def update_firefighters(self):
+        self.clear_marker()
         for fireman in self.firemen:
-            if fireman.active:
+            if fireman.active and fireman.position and fireman.direction is not None:
                 # self.canvas.mo
                 fireman_x, fireman_y = get_xy_pos(big_map_coords if self.is_big else small_map_coords, fireman.position)
                 self.firemen_markers.append(self.canvas.create_oval(fireman_x-15, fireman_y-15, fireman_x+15, fireman_y+15, fill=temp_to_color(fireman.temperature)))
@@ -127,18 +134,37 @@ class SerialTask(threading.Thread):
         self.running = True
 
     def run(self):
-        with serial.Serial(port='/dev/cu.usbserial-A503JOHS', baudrate=38400, timeout=1) as hub:
+        with open("cheater_cheater_pumpkin_eater.log") as f:
+            # with serial.Serial(port='COM3', baudrate=38400, parity='N', rtscts=True, dsrdtr=True) as hub:
             # hub.open()
-            jstr = '{"temperature": 62, "direction": 270, "gps_lat": 37.336, "gps_long": -121.88}'
-            while(self.running):
-                print(hub.readline())
-                jdict = json.loads(jstr)
-                self.tkwin.firemen[0].position = (jdict['gps_lat'], jdict['gps_long'])
-                self.tkwin.firemen[0].temperature = jdict['temperature']
-                self.tkwin.firemen[0].direction = jdict['direction']
-                self.tkwin.firemen[0].active = True
-                self.tkwin.update_firefighters()
-                # time.sleep(1)
+            jstr = ''
+            jdict = None
+            # jstr = '{"temperature": 62, "direction": 270, "gps_lat": 37.336, "gps_long": -121.88}'
+            while self.running:
+                jstr += f.readline()
+                try:
+                    jdict = json.loads(jstr)
+                except:
+                    jstr.strip('\n')
+
+                if jdict:
+                    print(jstr.strip('\n'))
+                    print(time.time())
+                    jstr = ''
+                    if jdict.get('gps_lat'):
+                        self.tkwin.firemen[0].position = (jdict['gps_lat'], jdict['gps_long'])
+
+                    if jdict.get('temperature'):
+                        self.tkwin.firemen[0].temperature = jdict['temperature']
+
+                    if jdict.get('direction'):
+                        self.tkwin.firemen[0].direction = jdict['direction']
+
+                    self.tkwin.firemen[0].active = True
+                    self.tkwin.update_firefighters()
+                    jdict = None
+                else:
+                    time.sleep(0.01)
 
 
 FireApp()
