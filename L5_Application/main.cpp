@@ -20,12 +20,13 @@
 #include "tasks.hpp"
 #include "examples/examples.hpp"
 #include "LPC17xx.h"
-#include "ansotas/gps.h"
 #include "lpc_pwm.hpp"
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 #include "semphr.h"
+#include <string.h>
+#include "wireless.h"
 
 typedef enum {
     sys_restart = 1,
@@ -55,15 +56,13 @@ typedef enum {
 
 } gpsmessage_t;
 
-typedef struct {
-        uint8_t length;
-        uint8_t resp_id;
-} gpspackage_t;
-
-typedef struct {
-        uint32_t lat;
-        uint32_t lon;
-} waypoint_t;
+typedef enum {
+    compass = 1,
+    gps = 2,
+    temp = 3,
+    accel = 4,
+    carbon = 5,
+} sensor_t;
 
 int32_t offset_lat = 0;
 int32_t offset_lon = 0;
@@ -188,25 +187,32 @@ class compass_task : public scheduler_task {
         }
 
         bool run(void *p){
-            int compass = 0;
+            uint16_t comp = 0;
+            char data2[24] = {0};
             LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
             while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
             while(!(LPC_UART3->LSR & (1 << 0)));
-            compass += LPC_UART3->RBR*256;
+            comp += LPC_UART3->RBR*256;
             while(!(LPC_UART3->LSR & (1 << 0)));
-            compass += LPC_UART3->RBR;
+            comp += LPC_UART3->RBR;
             while(1){
                 vTaskDelay(100);
-                compass = 0;
+                comp = 0;
                 LPC_UART3->THR = 0x13;                  //send byte "i" from the message string
                 while(!(LPC_UART3->LSR & (1 << 5)));    //wait for empty transmitter holding register
                 while(!(LPC_UART3->LSR & (1 << 0)));
-                compass += LPC_UART3->RBR*256;
+                comp += LPC_UART3->RBR*256;
                 while(!(LPC_UART3->LSR & (1 << 0)));
-                compass += LPC_UART3->RBR;
-                xSemaphoreTake(sema, 10000);
-                printf("{\"direction\": %i}\n", compass/10);
-                xSemaphoreGive(sema);
+                comp += LPC_UART3->RBR;
+                data2[0] = compass;
+                data2[1] = comp%256;
+                data2[2] = comp/256;
+                wireless_send(MESH_BROADCAST_ADDR, mesh_pkt_nack, data2, 3, 1);
+//                size = sprintf(data2, "{\"direction\": %i}\n", compass/10);
+//                xSemaphoreTake(sema, 10000);
+//                wireless_send(MESH_BROADCAST_ADDR, mesh_pkt_nack, data2, size, 3);
+////                printf("{\"direction\": %i}\n", compass/10);
+//                xSemaphoreGive(sema);
             }
             return true;
         }
@@ -249,7 +255,8 @@ class gps_task : public scheduler_task {
             gps_send_message(gps_config_datum, 0);
             gps_send_message(sys_config_nmea, 1);
 
-            uint8_t data3[256] = {0};
+            char data3[256] = {0};
+//            uint8_t size = 0;
             uint32_t latd = 0, latm = 0, longd = 0, longm = 0;
             while(1){
                 while(data3[0] != '$') {
@@ -280,9 +287,17 @@ class gps_task : public scheduler_task {
                 longm = longm*10 + data3[27]-'0';
                 longm = longm*10 + data3[28]-'0';
                 if(data3[43] == 'A') {
-                    xSemaphoreTake(sema, 10000);
-                    printf("{\"gps_lat\": %f, \"gps_long\": -%f}\n", latd+(latm*5.0/3000000), longd+(longm*5.0/3000000));
-                    xSemaphoreGive(sema);
+                    data3[0] = gps;
+                    data3[1] = latd%256;
+                    memcpy(&data3[2], &latm, 4);
+                    data3[6] = longd%256;
+                    memcpy(&data3[7], &longm, 4);
+                    wireless_send(MESH_BROADCAST_ADDR, mesh_pkt_nack, data3, 11, 1);
+//                    size = sprintf(data3, "{\"gps_lat\": %f, \"gps_long\": -%f}\n", latd+(latm*5.0/3000000), longd+(longm*5.0/3000000));
+//                    xSemaphoreTake(sema, 10000);
+//                    wireless_send(MESH_BROADCAST_ADDR, mesh_pkt_nack, data3, size, 3);
+////                    printf("{\"gps_lat\": %f, \"gps_long\": -%f}\n", latd+(latm*5.0/3000000), longd+(longm*5.0/3000000));
+//                    xSemaphoreGive(sema);
                 }
                 vTaskDelay(900);
                 data3[0] = 0;
@@ -292,15 +307,36 @@ class gps_task : public scheduler_task {
         }
 };
 
+//class serial_task : public scheduler_task {
+//    public:
+//
+//        serial_task(uint8_t priority) : scheduler_task("serial", 512*4, priority){}
+//
+//        bool init(void){
+//            return true;
+//        }
+//
+//        bool run(void *p){
+//            while(1){
+//                wireless_send(MESH_BROADCAST_ADDR, mesh_pkt_nack, "Hello!", 6, 1);
+//                vTaskDelay(900);
+////                if (wireless_get_rx_pkt(&pkt, 10000))
+////                    printf((char*)pkt.data);
+//            }
+//        }
+//};
+
 int main(void)
 {
 	//Set PWM Pin 2.0
-	LPC_PINCON -> PINSEL4 &= ~(15<<0);
-	LPC_PINCON -> PINSEL4 |= (5<<0);
+//	LPC_PINCON -> PINSEL4 &= ~(15<<0);
+//	LPC_PINCON -> PINSEL4 |= (5<<0);
 
     //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
-    scheduler_add_task(new compass_task(PRIORITY_HIGH));
-    scheduler_add_task(new gps_task(PRIORITY_HIGH));
+    scheduler_add_task(new compass_task(PRIORITY_MEDIUM));
+    scheduler_add_task(new gps_task(PRIORITY_MEDIUM));
+//    scheduler_add_task(new serial_task(PRIORITY_LOW));
+    scheduler_add_task(new wirelessTask(PRIORITY_HIGH));
     sema = xSemaphoreCreateBinary();
 
     scheduler_start(); ///< This shouldn't return
